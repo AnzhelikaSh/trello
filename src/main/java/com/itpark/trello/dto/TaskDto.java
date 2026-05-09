@@ -2,16 +2,14 @@ package com.itpark.trello.dto;
 
 import lombok.Data;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
-public class BoardDto {
+public class TaskDto {
     private Long id;
     private String title;
     private String description;
-    private UserDto owner;
-    private List<UserDto> members;
-    private List<ColumnDto> columns;
+    private Integer position;
+    private UserDto assignee;  // ← Добавь это поле
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
-
