@@ -100,27 +100,28 @@ public class TaskService {
     // Переместить задачу в другую колонку или изменить позицию
     @Transactional
     public TaskDto updateTaskPosition(Long taskId, Long destinationColumnId, Integer newPosition) {
+        // 1. Находим задачу
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Задача не найдена с id: " + taskId));
 
         Long oldColumnId = task.getColumn().getId();
 
-        // Если задача перемещается в другую колонку
+        // 2. Если задача перемещается в другую колонку
         if (!oldColumnId.equals(destinationColumnId)) {
             BoardColumn newColumn = columnRepository.findById(destinationColumnId)
                     .orElseThrow(() -> new ResourceNotFoundException("Колонка не найдена с id: " + destinationColumnId));
             task.setColumn(newColumn);
         }
 
-        // Обновляем позицию
+        // 3. Обновляем позицию
         task.setPosition(newPosition);
 
-        // Пересчитываем позиции для других задач в старой колонке
+        // 4. Пересчитываем позиции в старой колонке
         if (!oldColumnId.equals(destinationColumnId)) {
             reorderTasksInColumn(oldColumnId);
         }
 
-        // Пересчитываем позиции для других задач в новой колонке
+        // 5. Пересчитываем позиции в новой колонке
         reorderTasksInColumn(destinationColumnId);
 
         Task updatedTask = taskRepository.save(task);
@@ -129,6 +130,9 @@ public class TaskService {
 
     // Вспомогательный метод для пересчета позиций задач в колонке
     private void reorderTasksInColumn(Long columnId) {
+        if (columnId == null) {
+            return;
+        }
         List<Task> tasks = taskRepository.findByColumnIdOrderByPositionAsc(columnId);
         for (int i = 0; i < tasks.size(); i++) {
             tasks.get(i).setPosition(i);

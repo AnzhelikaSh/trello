@@ -5,6 +5,7 @@ import { fetchBoardById, clearCurrentBoard } from '../../store/boardSlice';
 import {
     DndContext,
     closestCorners,
+    pointerWithin,
     DragOverlay,
     defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
@@ -41,6 +42,7 @@ function BoardDetail() {
     const [columns, setColumns] = useState([]);
     const [activeTask, setActiveTask] = useState(null);
 
+    // Загружаем доску при монтировании
     useEffect(() => {
         if (boardId) {
             dispatch(fetchBoardById(boardId));
@@ -50,18 +52,13 @@ function BoardDetail() {
         };
     }, [dispatch, boardId]);
 
-    // обновляем локальный список колонок
+    // Обновляем локальный список колонок
     useEffect(() => {
-        if (currentBoard) {
-            // Если колонки есть — используем их, если нет — создаём пустой массив
-            const boardColumns = currentBoard.columns || [];
-
-            // Убеждаемся, что у каждой колонки есть tasks (даже если null)
-            const columnsWithTasks = boardColumns.map(col => ({
+        if (currentBoard?.columns) {
+            const columnsWithTasks = currentBoard.columns.map(col => ({
                 ...col,
                 tasks: col.tasks || []
             }));
-
             setColumns(columnsWithTasks);
         }
     }, [currentBoard]);
@@ -73,26 +70,16 @@ function BoardDetail() {
             return;
         }
 
-        console.log('📤 СОЗДАНИЕ КОЛОНКИ: начато');
-        console.log('boardId:', boardId);
-        console.log('title:', newColumnTitle);
-
         try {
-            const response = await api.post(`/boards/${boardId}/columns`, {
+            await api.post(`/boards/${boardId}/columns`, {
                 title: newColumnTitle
             });
-
-            console.log('✅ КОЛОНКА СОЗДАНА:', response.data);
-
             setNewColumnTitle('');
             setOpenColumnDialog(false);
-
-            // Обновляем доску, чтобы получить обновлённый список колонок
-            await dispatch(fetchBoardById(boardId));
-
+            dispatch(fetchBoardById(boardId));
         } catch (error) {
-            console.error('❌ ОШИБКА:', error);
-            alert('Ошибка: ' + (error.response?.data?.message || error.message));
+            console.error('Ошибка при создании колонки:', error);
+            alert('Ошибка при создании колонки');
         }
     };
 
@@ -161,7 +148,7 @@ function BoardDetail() {
         }
     };
 
-    // --- Drag-and-drop ---
+    // --- Drag-and-drop: начало перетаскивания ---
     const handleDragStart = (event) => {
         const { active } = event;
         const taskId = active.id;
@@ -175,17 +162,19 @@ function BoardDetail() {
         }
     };
 
+    // --- Drag-and-drop: конец перетаскивания (ИСПРАВЛЕННАЯ ВЕРСИЯ) ---
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         setActiveTask(null);
 
-        if (!over) return;
+        if (!over) {
+            console.log('⏭️ Нет цели');
+            return;
+        }
 
         const taskId = active.id;
-        const destinationColumnId = parseInt(over.id);
 
-        if (isNaN(destinationColumnId)) return;
-
+        // 1. Находим исходную колонку и задачу
         let sourceColumnId = null;
         let task = null;
         for (const column of columns) {
@@ -197,20 +186,66 @@ function BoardDetail() {
             }
         }
 
-        if (!task || sourceColumnId === destinationColumnId) return;
+        if (!task) {
+            console.error('❌ Задача не найдена:', taskId);
+            return;
+        }
 
+        // 2. Определяем целевую колонку
+        let destinationColumnId = null;
+        const overId = parseInt(over.id);
+
+        // Проверяем, является ли over.id колонкой
+        const isColumn = columns.some(col => col.id === overId);
+
+        if (isColumn) {
+            // Если перетаскиваем на колонку
+            destinationColumnId = overId;
+            console.log('🎯 Цель — колонка:', destinationColumnId);
+        } else {
+            // Если перетаскиваем на задачу — ищем её колонку
+            for (const column of columns) {
+                const taskExists = column.tasks?.some(t => t.id === overId);
+                if (taskExists) {
+                    destinationColumnId = column.id;
+                    console.log('🎯 Цель — задача в колонке:', destinationColumnId);
+                    break;
+                }
+            }
+        }
+
+        // Если не нашли колонку — выходим
+        if (!destinationColumnId) {
+            console.error('❌ Не удалось определить колонку назначения');
+            return;
+        }
+
+        // 3. Если задача не перемещается — выходим
+        if (sourceColumnId === destinationColumnId) {
+            console.log('⏭️ Та же колонка');
+            return;
+        }
+
+        // 4. Отправляем запрос на перемещение
         try {
-            await api.patch(`/boards/${boardId}/columns/1/tasks/${taskId}/position`, {
+            console.log('📤 Перемещение:', {
+                taskId,
+                sourceColumnId,
+                destinationColumnId
+            });
+
+            await api.patch(`/boards/${boardId}/columns/${sourceColumnId}/tasks/${taskId}/position`, {
                 destinationColumnId: destinationColumnId,
                 newPosition: 0
             });
 
             dispatch(fetchBoardById(boardId));
         } catch (error) {
-            console.error('Ошибка при перемещении задачи:', error);
-            alert('Ошибка при перемещении задачи');
+            console.error('❌ Ошибка при перемещении:', error);
+            alert('Ошибка: ' + (error.response?.data?.message || error.message));
         }
     };
+
 
     const dropAnimation = {
         sideEffects: defaultDropAnimationSideEffects({
@@ -265,13 +300,13 @@ function BoardDetail() {
             )}
 
             <DndContext
-                collisionDetection={closestCorners}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+                 collisionDetection={pointerWithin}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
             >
                 <Box sx={{ display: 'flex', overflowX: 'auto', pb: 2 }}>
                     {columns.map((column) => (
-                        <div key={column.id}>
+                        <div key={column.id} id={column.id}>  {/* ← ВАЖНО: id колонки */}
                             <SortableContext
                                 items={column.tasks?.map(task => task.id) || []}
                                 strategy={verticalListSortingStrategy}

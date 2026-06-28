@@ -4,6 +4,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { useSortable } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { styled } from '@mui/material/styles';
 
@@ -26,7 +27,6 @@ const TasksContainer = styled(Box)({
     padding: '4px',
 });
 
-// Компонент для одной задачи с поддержкой перетаскивания
 function SortableTask({ task, onEdit, onDelete }) {
     const {
         attributes,
@@ -78,6 +78,12 @@ function Column({ column, boardId, onCreateTask, onUpdateTask, onDeleteTask, onU
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editTitle, setEditTitle] = useState(column.title);
 
+    // ✅ Добавляем зону для перетаскивания
+    const { setNodeRef } = useDroppable({
+        id: column.id,
+        data: { type: 'column', columnId: column.id }
+    });
+
     const handleAddTask = () => {
         if (newTaskTitle.trim()) {
             onCreateTask(column.id, { title: newTaskTitle, description: '' });
@@ -94,78 +100,80 @@ function Column({ column, boardId, onCreateTask, onUpdateTask, onDeleteTask, onU
     };
 
     return (
-        <ColumnPaper elevation={2}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" p={1}>
-                {isEditingTitle ? (
-                    <TextField
-                        size="small"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        onBlur={handleUpdateTitle}
-                        onKeyPress={(e) => e.key === 'Enter' && handleUpdateTitle()}
-                        autoFocus
-                    />
-                ) : (
-                    <Typography
-                        variant="h6"
-                        sx={{ cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}
-                        onClick={() => setIsEditingTitle(true)}
-                    >
-                        {column.title}
-                        <EditIcon fontSize="small" sx={{ ml: 0.5, opacity: 0.5 }} />
-                    </Typography>
-                )}
-                <IconButton size="small" onClick={() => onDeleteColumn(column.id)}>
-                    <DeleteIcon fontSize="small" />
-                </IconButton>
-            </Box>
-
-            <TasksContainer>
-                {column.tasks?.map((task) => (
-                    <SortableTask
-                        key={task.id}
-                        task={task}
-                        onEdit={onUpdateTask}
-                        onDelete={onDeleteTask}
-                    />
-                ))}
-                {(!column.tasks || column.tasks.length === 0) && (
-                    <Typography variant="body2" color="textSecondary" sx={{ p: 1, textAlign: 'center' }}>
-                        Нет задач
-                    </Typography>
-                )}
-            </TasksContainer>
-
-            {isAddingTask ? (
-                <Box p={1}>
-                    <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Название задачи..."
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
-                        autoFocus
-                    />
-                    <Box display="flex" gap={1} mt={1}>
-                        <Button size="small" variant="contained" onClick={handleAddTask}>
-                            Добавить
-                        </Button>
-                        <Button size="small" onClick={() => setIsAddingTask(false)}>
-                            Отмена
-                        </Button>
-                    </Box>
+        <div ref={setNodeRef} style={{ height: '100%' }}>
+            <ColumnPaper elevation={2}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" p={1}>
+                    {isEditingTitle ? (
+                        <TextField
+                            size="small"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            onBlur={handleUpdateTitle}
+                            onKeyPress={(e) => e.key === 'Enter' && handleUpdateTitle()}
+                            autoFocus
+                        />
+                    ) : (
+                        <Typography
+                            variant="h6"
+                            sx={{ cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}
+                            onClick={() => setIsEditingTitle(true)}
+                        >
+                            {column.title}
+                            <EditIcon fontSize="small" sx={{ ml: 0.5, opacity: 0.5 }} />
+                        </Typography>
+                    )}
+                    <IconButton size="small" onClick={() => onDeleteColumn(column.id)}>
+                        <DeleteIcon fontSize="small" />
+                    </IconButton>
                 </Box>
-            ) : (
-                <Button
-                    startIcon={<AddIcon />}
-                    onClick={() => setIsAddingTask(true)}
-                    sx={{ justifyContent: 'flex-start', m: 1 }}
-                >
-                    Добавить задачу
-                </Button>
-            )}
-        </ColumnPaper>
+
+                <TasksContainer>
+                    {column.tasks?.map((task) => (
+                        <SortableTask
+                            key={task.id}
+                            task={task}
+                            onEdit={onUpdateTask}
+                            onDelete={onDeleteTask}
+                        />
+                    ))}
+                    {(!column.tasks || column.tasks.length === 0) && (
+                        <Typography variant="body2" color="textSecondary" sx={{ p: 1, textAlign: 'center' }}>
+                            Нет задач
+                        </Typography>
+                    )}
+                </TasksContainer>
+
+                {isAddingTask ? (
+                    <Box p={1}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Название задачи..."
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
+                            autoFocus
+                        />
+                        <Box display="flex" gap={1} mt={1}>
+                            <Button size="small" variant="contained" onClick={handleAddTask}>
+                                Добавить
+                            </Button>
+                            <Button size="small" onClick={() => setIsAddingTask(false)}>
+                                Отмена
+                            </Button>
+                        </Box>
+                    </Box>
+                ) : (
+                    <Button
+                        startIcon={<AddIcon />}
+                        onClick={() => setIsAddingTask(true)}
+                        sx={{ justifyContent: 'flex-start', m: 1 }}
+                    >
+                        Добавить задачу
+                    </Button>
+                )}
+            </ColumnPaper>
+        </div>
     );
 }
 

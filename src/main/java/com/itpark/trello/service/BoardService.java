@@ -3,12 +3,15 @@ package com.itpark.trello.service;
 import com.itpark.trello.dto.BoardDto;
 import com.itpark.trello.dto.ColumnDto;
 import com.itpark.trello.dto.CreateBoardRequest;
+import com.itpark.trello.dto.TaskDto;
 import com.itpark.trello.exception.ResourceNotFoundException;
 import com.itpark.trello.model.Board;
 import com.itpark.trello.model.BoardColumn;
+import com.itpark.trello.model.Task;
 import com.itpark.trello.model.User;
 import com.itpark.trello.repository.BoardColumnRepository;
 import com.itpark.trello.repository.BoardRepository;
+import com.itpark.trello.repository.TaskRepository;
 import com.itpark.trello.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ public class BoardService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final BoardColumnRepository columnRepository;
+    private final TaskRepository taskRepository;  // ← ДОБАВЛЕНО
 
     @Transactional
     public BoardDto createBoard(CreateBoardRequest request, Long ownerId) {
@@ -51,8 +55,15 @@ public class BoardService {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Доска не найдена с id: " + id));
 
+        // Загружаем колонки
         List<BoardColumn> columns = columnRepository.findByBoardIdOrderByPositionAsc(id);
         board.setColumns(columns);
+
+        // ✅ Загружаем задачи для каждой колонки
+        for (BoardColumn column : columns) {
+            List<Task> tasks = taskRepository.findByColumnIdOrderByPositionAsc(column.getId());
+            column.setTasks(tasks);
+        }
 
         return mapToDto(board);
     }
@@ -125,7 +136,6 @@ public class BoardService {
                 .map(userService::mapToDto)
                 .collect(Collectors.toList()));
 
-        // ✅ ДОБАВЛЯЕМ КОЛОНКИ (используем mapColumnToDto, который возвращает ColumnDto)
         if (board.getColumns() != null) {
             dto.setColumns(board.getColumns().stream()
                     .map(this::mapColumnToDto)
@@ -136,12 +146,33 @@ public class BoardService {
         return dto;
     }
 
-    // ✅ ЭТОТ МЕТОД ВОЗВРАЩАЕТ ColumnDto
     private ColumnDto mapColumnToDto(BoardColumn column) {
         ColumnDto dto = new ColumnDto();
         dto.setId(column.getId());
         dto.setTitle(column.getTitle());
         dto.setPosition(column.getPosition());
+
+        // ✅ Добавляем задачи в DTO
+        if (column.getTasks() != null) {
+            dto.setTasks(column.getTasks().stream()
+                    .map(this::mapTaskToDto)
+                    .collect(Collectors.toList()));
+        }
+
+        return dto;
+    }
+
+    private TaskDto mapTaskToDto(Task task) {
+        TaskDto dto = new TaskDto();
+        dto.setId(task.getId());
+        dto.setTitle(task.getTitle());
+        dto.setDescription(task.getDescription());
+        dto.setPosition(task.getPosition());
+        dto.setCreatedAt(task.getCreatedAt());
+        dto.setUpdatedAt(task.getUpdatedAt());
+        if (task.getAssignee() != null) {
+            dto.setAssignee(userService.mapToDto(task.getAssignee()));
+        }
         return dto;
     }
 }
