@@ -1,13 +1,12 @@
 package com.itpark.trello.controller;
 
 
-import com.itpark.trello.dto.CreateUserRequest;
 import com.itpark.trello.dto.UserDto;
 import com.itpark.trello.service.UserService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,10 +18,10 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
-    public ResponseEntity<UserDto> createUser(@Valid @RequestBody CreateUserRequest request) {
-        UserDto createdUser = userService.createUser(request);
-        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
+    @GetMapping("/me")
+    public ResponseEntity<UserDto> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+        UserDto user = userService.getUserByUsername(userDetails.getUsername());
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping("/{id}")
@@ -36,7 +35,5 @@ public class UserController {
         List<UserDto> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
-
-
 }
 

@@ -9,18 +9,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
 import java.util.List;
-
 
 @RestController
 @RequestMapping("/api/boards/{boardId}/columns")
 @RequiredArgsConstructor
 public class BoardColumnController {
 
-
     private final BoardColumnService columnService;
-
 
     // Создать колонку в доске
     @PostMapping
@@ -31,13 +27,17 @@ public class BoardColumnController {
         return new ResponseEntity<>(column, HttpStatus.CREATED);
     }
 
-
     // Получить все колонки доски
     @GetMapping
     public ResponseEntity<List<BoardColumnDto>> getBoardColumns(@PathVariable Long boardId) {
         return ResponseEntity.ok(columnService.getBoardColumns(boardId));
     }
 
+    // Получить колонку по ID
+    @GetMapping("/{columnId}")
+    public ResponseEntity<BoardColumnDto> getColumnById(@PathVariable Long columnId) {
+        return ResponseEntity.ok(columnService.getColumnById(columnId));
+    }
 
     // Обновить колонку
     @PutMapping("/{columnId}")
@@ -48,7 +48,6 @@ public class BoardColumnController {
         return ResponseEntity.ok(columnService.updateColumn(columnId, request));
     }
 
-
     // Удалить колонку
     @DeleteMapping("/{columnId}")
     public ResponseEntity<Void> deleteColumn(
@@ -57,7 +56,6 @@ public class BoardColumnController {
         columnService.deleteColumn(columnId);
         return ResponseEntity.noContent().build();
     }
-
 
     // Изменить порядок колонок
     @PatchMapping("/reorder")

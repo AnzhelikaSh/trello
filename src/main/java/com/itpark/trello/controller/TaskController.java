@@ -19,6 +19,7 @@ public class TaskController {
 
     private final TaskService taskService;
 
+    // Создать задачу в колонке
     @PostMapping
     public ResponseEntity<TaskDto> createTask(
             @PathVariable Long boardId,
@@ -28,16 +29,19 @@ public class TaskController {
         return new ResponseEntity<>(task, HttpStatus.CREATED);
     }
 
+    // Получить все задачи в колонке
     @GetMapping
     public ResponseEntity<List<TaskDto>> getColumnTasks(@PathVariable Long columnId) {
         return ResponseEntity.ok(taskService.getColumnTasks(columnId));
     }
 
+    // Получить задачу по ID
     @GetMapping("/{taskId}")
     public ResponseEntity<TaskDto> getTaskById(@PathVariable Long taskId) {
         return ResponseEntity.ok(taskService.getTaskById(taskId));
     }
 
+    // Обновить задачу
     @PutMapping("/{taskId}")
     public ResponseEntity<TaskDto> updateTask(
             @PathVariable Long taskId,
@@ -45,13 +49,14 @@ public class TaskController {
         return ResponseEntity.ok(taskService.updateTask(taskId, request));
     }
 
+    // Удалить задачу
     @DeleteMapping("/{taskId}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long taskId) {
         taskService.deleteTask(taskId);
         return ResponseEntity.noContent().build();
     }
 
-    // ВАЖНО: эта аннотация должна быть такой:
+    // Переместить задачу (drag-and-drop)
     @PatchMapping("/{taskId}/position")
     public ResponseEntity<TaskDto> updateTaskPosition(
             @PathVariable Long boardId,

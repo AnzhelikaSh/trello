@@ -69,5 +69,17 @@ public class UserService {
         dto.setCreatedAt(user.getCreatedAt());
         return dto;
     }
+
+    public UserDto getUserByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+        return mapToDto(user);
+    }
+
+    // Получить User entity по username (для использования в контроллерах)
+    public User getUserByUsernameEntity(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден: " + username));
+    }
 }
 
